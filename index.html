@@ -49,7 +49,7 @@
       <div class="vick-logo" aria-hidden="true"></div>
       <div>
         <h1>Hi Ray — VICK</h1>
-        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 4 · full v11.0 constitution + STARGATE</span></div>
+        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 5 · Haiku brain (budget) + voice</span></div>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
           </div>
           <div>
             <label for="model">Claude model</label>
-            <input id="model" type="text" placeholder="claude-sonnet-4-6"/>
+            <input id="model" type="text" placeholder="claude-haiku-4-5-20251001 (cheapest; type claude-sonnet-4-6 for deeper reasoning)"/>
           </div>
           <div>
             <label for="elevenKey">🎙️ ElevenLabs API Key — Vick's voice (optional; blank = browser voice)</label>
@@ -125,7 +125,7 @@
 (function(){
   const EMBEDDED = {
     anthropicKey: "",
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     elevenKey: "",
     voiceId: "",
     webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
@@ -295,7 +295,7 @@
           'anthropic-version':'2023-06-01',
           'anthropic-dangerous-direct-browser-access':'true'
         },
-        body: JSON.stringify({ model, max_tokens:400, system: VICK_SYSTEM, messages: history })
+        body: JSON.stringify({ model, max_tokens:350, system: VICK_SYSTEM, messages: history })
       });
       if(!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('Claude HTTP '+res.status+(res.status===401?' (check API key)':res.status===404?' (check model name)':'')+' '+t.slice(0,140)); }
       const data = await res.json();
