@@ -1,46 +1,76 @@
-# ⚡ Vick Electric — Tech Futurist Dashboard (GitHub Deploy)
+# ⚡ VICK — Personal Sovereign OS (voice dashboard)
 
-This package is **ready for GitHub Pages** deployment.
+A single-file, voice-driven front-end for VICK — Ray's personal governance OS.
+Governed by the v11.0 Core Operating Prompt (identity, action-permission tiers,
+STARGATE discipline). Runs free on GitHub Pages. Brain + voice + memory are all
+configured in-browser; **no keys are ever committed** — they live only in your
+browser's `localStorage`.
 
-## 🌐 Publish Steps
+Live: https://mrreese09-cloud.github.io/Vick-Electric-/
+Deploys automatically on every push to `main` (see `.github/workflows/deploy-pages.yml`).
 
-1. Go to https://github.com and create a new repository named `vick-electric`.
-2. Upload all files (index.html, .nojekyll, README.md) into the repo root.
-3. In GitHub:
-   - Go to **Settings → Pages**.
-   - Under “Build and deployment,” choose:
-     - Source: Deploy from branch
-     - Branch: main → /(root)
-4. Press **Save**.
+---
 
-Your site will go live at:
+## 🧠 Brain — free Gemini (recommended)
+1. Go to https://aistudio.google.com → **Get API key** → **Create API key** (free, no credit card).
+2. Paste it into the dashboard's **Gemini API Key** field → **💾 Save Settings**.
+3. Tap **▶ Start listening** and just talk — no wake word.
+
+Optional paid upgrade: a **Claude** key (`sk-ant-…`, from console.anthropic.com) in the
+Claude field gives deeper reasoning. Leave the **Model** field blank to use the free default
+(`gemini-2.0-flash`); the cost-tuned cap is 350 output tokens per reply.
+
+## 🎙️ Voice — ElevenLabs (optional Jarvis voice)
+1. At https://elevenlabs.io pick a voice (**Voices → Library**) or design one (**Voice Design**,
+   e.g. *"calm, intelligent, slightly formal male AI assistant"*). Copy its **Voice ID**.
+2. Profile → **API Key**. Paste **API Key** + **Voice ID** → Save.
+3. Leave them blank to use your phone's free built-in voice. If ElevenLabs fails or runs out of
+   free credits, VICK automatically falls back to the browser voice (low-latency `eleven_turbo_v2_5`).
+
+## ☁️ Memory — External State Layer
+- **On-device (automatic, free):** the conversation persists to `localStorage`, so VICK remembers
+  across sessions on that device.
+- **Cross-device (Supabase, free tier, no card):** make VICK share one brain across all your devices.
+  1. Create a free project at https://supabase.com.
+  2. In the project's **SQL Editor**, run the SQL below.
+  3. Project **Settings → API**: copy the **Project URL** and the **anon public** key.
+  4. Paste both into the dashboard's **Supabase Project URL** + **anon key** fields → Save → reload.
+  VICK loads recent memory from the cloud on start and writes every exchange back.
+
+```sql
+create table if not exists vick_memory (
+  id bigint generated always as identity primary key,
+  created_at timestamptz default now(),
+  role text not null,
+  content text not null
+);
+create table if not exists vick_decisions (
+  id bigint generated always as identity primary key,
+  created_at timestamptz default now(),
+  title text not null,
+  detail text,
+  status text default 'open',
+  tier text
+);
+alter table vick_memory enable row level security;
+alter table vick_decisions enable row level security;
+create policy "anon all memory"   on vick_memory   for all to anon using (true) with check (true);
+create policy "anon all decisions" on vick_decisions for all to anon using (true) with check (true);
 ```
-https://<yourusername>.github.io/vick-electric/
-```
 
-## ✅ Once Live
-- Open in Chrome.
-- Allow Microphone + Sound.
-- Tap **Start Vick**.
-- You’ll hear “Hi Ray — my listening engine is fully online and awaiting your command.”
+> The anon key + URL are public-client credentials and live only in your browser's `localStorage`
+> (never committed). For a personal single-user setup the policies above are fine; lock them down
+> with Supabase Auth later if you ever share the project. Don't speak true secrets to VICK — per
+> SECRET ZERO, passwords/keys never belong in conversation.
 
-## 🔧 Embedded Settings
-- Webhook: https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05
-- Prompt: Tech Futurist — respond intelligently and conversationally to Ray.
-- Wake phrase: “hey vick”
-- Theme: Electric (blue/green energy lines)
-- Autostart: enabled on desktop; tap-to-start on mobile.
+## Buttons
+- **Start listening / Stop** — mic on/off (talk freely; no wake word by default).
+- **Say "Hi Ray"** — speak the greeting (quick voice test).
+- **💾 Save Settings / Load Settings** — persist config to this browser.
+- **🧠 Clear Memory** — wipe the on-device conversation memory for a fresh start.
 
-## 🎙️ Give Vick a Real (Jarvis) Voice — ElevenLabs
-By default Vick talks through the browser's built-in voice (robotic). To use a real ElevenLabs voice:
-
-1. **Create / pick the voice** at https://elevenlabs.io
-   - Easiest: open **Voices → Library**, pick a deep/calm male voice, and **Add to My Voices**.
-   - Custom "Jarvis": use **Voice Design** — describe it (e.g. *"calm, intelligent, slightly formal British male AI assistant, warm but precise"*) and save it.
-2. **Get the Voice ID** — open the voice → its ID looks like `21m00Tcm4TlvDq8ikWAM`.
-3. **Get your API key** — ElevenLabs → Profile → **API Key** (`xi-...`).
-4. In the dashboard, paste the **API Key** and **Voice ID** into their fields, press **💾 Save Settings**, then **“Say Hi Ray”** to test. The Voice chip turns green when configured.
-
-**Security:** the key is stored only in your browser's `localStorage` and is **never** written into `index.html` or committed to this repo. If Vick can't reach ElevenLabs (bad key, quota, offline), it automatically falls back to the browser voice so it never goes silent.
-
-> Note: ElevenLabs free tier has a monthly character limit; long replies use more credits. The build uses the low-latency `eleven_turbo_v2_5` model for snappy, conversational responses.
+## Notes
+- Voice **recognition** needs Chrome on Android/desktop over HTTPS. iOS browsers don't support the
+  Web Speech recognition API (VICK can talk back there, but not listen).
+- This dashboard is VICK's face, brain, and voice. Real autonomous **execution** (sending email,
+  booking calendar, scheduled tasks) lives in the separate n8n + connector layer.

@@ -49,7 +49,7 @@
       <div class="vick-logo" aria-hidden="true"></div>
       <div>
         <h1>Hi Ray — VICK</h1>
-        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 7 · Gemini brain + persistent memory</span></div>
+        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 8 · cross-device memory (Supabase)</span></div>
       </div>
     </div>
 
@@ -85,8 +85,16 @@
             <input id="voiceId" type="text" placeholder="e.g. 21m00Tcm4TlvDq8ikWAM"/>
           </div>
           <div>
-            <label for="webhook">n8n Webhook URL (optional — used only if no Claude key)</label>
+            <label for="webhook">n8n Webhook URL (optional — used only if no brain key)</label>
             <input id="webhook" type="text" placeholder="https://.../webhook/..."/>
+          </div>
+          <div>
+            <label for="sbUrl">☁️ Supabase Project URL (optional — cross-device memory)</label>
+            <input id="sbUrl" type="text" placeholder="https://xxxx.supabase.co"/>
+          </div>
+          <div>
+            <label for="sbKey">Supabase anon key (paired with the URL above)</label>
+            <input id="sbKey" type="password" placeholder="eyJ... your project's anon public key"/>
           </div>
           <div class="row">
             <button id="btnStart" class="btn-accent">▶ Start listening</button>
@@ -135,6 +143,8 @@
     elevenKey: "",
     voiceId: "",
     webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
+    sbUrl: "",
+    sbKey: "",
     autostart: false,
     wakePhrase: false,
     sendWebhook: false
@@ -158,6 +168,27 @@
   const MEM_KEY = 'vick_memory_v1';
   function saveMemory(){ try{ localStorage.setItem(MEM_KEY, JSON.stringify(history.slice(-30))); }catch(e){} }
   function loadMemory(){ try{ const s=localStorage.getItem(MEM_KEY); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) history=a; } }catch(e){} }
+  // Cross-device External State Layer (Supabase). Optional: on if a URL + anon key are set.
+  function sbCfg(){ const u=($("sbUrl").value||'').trim().replace(/\/+$/,''); const k=($("sbKey").value||'').trim(); return (u&&k)?{u,k}:null; }
+  function sbHeaders(k){ return { 'apikey':k, 'Authorization':'Bearer '+k, 'Content-Type':'application/json' }; }
+  async function sbLoad(){
+    const c=sbCfg(); if(!c) return false;
+    try{
+      const res=await fetch(c.u+'/rest/v1/vick_memory?select=role,content&order=id.desc&limit=40', { headers: sbHeaders(c.k) });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const rows=await res.json();
+      history = rows.reverse().map(r=>({ role:r.role, content:r.content }));
+      saveMemory();
+      log('☁️ Cloud memory connected — '+history.length+' messages shared across your devices.');
+      return true;
+    }catch(e){ log('Cloud memory error: '+e.message+' — falling back to on-device memory.'); return false; }
+  }
+  function sbSave(role, content){
+    const c=sbCfg(); if(!c) return;
+    fetch(c.u+'/rest/v1/vick_memory', { method:'POST', headers: Object.assign(sbHeaders(c.k), {'Prefer':'return=minimal'}), body: JSON.stringify({ role, content }) })
+      .then(r=>{ if(!r.ok) log('Cloud save failed: HTTP '+r.status); })
+      .catch(e=> log('Cloud save failed: '+e.message));
+  }
   const IS_ANDROID = /Android/i.test(navigator.userAgent);
 
   const $ = (id)=>document.getElementById(id);
@@ -216,6 +247,8 @@
     $("elevenKey").value = cfg.elevenKey||'';
     $("voiceId").value = cfg.voiceId||'';
     $("webhook").value = cfg.webhook||'';
+    $("sbUrl").value = cfg.sbUrl||'';
+    $("sbKey").value = cfg.sbKey||'';
     $("chkAutostart").checked = !!cfg.autostart;
     $("chkWake").checked = !!cfg.wakePhrase;
     $("chkSendWebhook").checked = !!cfg.sendWebhook;
@@ -226,7 +259,7 @@
     isAwaitingCommand = !!cfg.wakePhrase;
   }
   function saveConfig(){
-    const cfg={ geminiKey:$("geminiKey").value, anthropicKey:$("anthropicKey").value, model:$("model").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, webhook:$("webhook").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
+    const cfg={ geminiKey:$("geminiKey").value, anthropicKey:$("anthropicKey").value, model:$("model").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, webhook:$("webhook").value, sbUrl:$("sbUrl").value, sbKey:$("sbKey").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
     try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); log('Settings saved.'); }catch(e){ log('Save error: '+e.message) }
   }
   function loadConfig(){
@@ -298,7 +331,7 @@
   async function askGemini(transcript, key){
     const model = ($("model").value||'').trim() || GEMINI_MODEL;
     log('Vick is thinking…'); setChip('webhook','warn'); if(recognition) recognition.stop();
-    history.push({ role:'user', content: transcript });
+    history.push({ role:'user', content: transcript }); sbSave('user', transcript);
     if(history.length > 20) history = history.slice(-20);
     try{
       const contents = history.map(m=>({ role: m.role==='assistant'?'model':'user', parts:[{ text:m.content }] }));
@@ -311,7 +344,7 @@
       const data = await res.json();
       const c = data.candidates && data.candidates[0];
       const v = (c && c.content && c.content.parts && c.content.parts[0] && c.content.parts[0].text) ? c.content.parts[0].text.trim() : "I didn't catch a reply.";
-      history.push({ role:'assistant', content: v }); saveMemory();
+      history.push({ role:'assistant', content: v }); saveMemory(); sbSave('assistant', v);
       log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; setChip('webhook','ok'); speak(v);
     }catch(e){ log('Brain error: '+e.message); setChip('webhook','bad'); speak('I had trouble thinking just now. Check the log on screen.'); }
     finally{ if(!isListening) setTimeout(startRecognition, 900); }
@@ -320,7 +353,7 @@
   async function askClaude(transcript, key){
     const model = ($("model").value||'').trim() || CLAUDE_MODEL;
     log('Vick is thinking…'); setChip('webhook','warn'); if(recognition) recognition.stop();
-    history.push({ role:'user', content: transcript });
+    history.push({ role:'user', content: transcript }); sbSave('user', transcript);
     if(history.length > 20) history = history.slice(-20);
     try{
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -336,7 +369,7 @@
       if(!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('Claude HTTP '+res.status+(res.status===401?' (check API key)':res.status===404?' (check model name)':'')+' '+t.slice(0,140)); }
       const data = await res.json();
       const v = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : "I didn't catch a reply.";
-      history.push({ role:'assistant', content: v }); saveMemory();
+      history.push({ role:'assistant', content: v }); saveMemory(); sbSave('assistant', v);
       log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; setChip('webhook','ok'); speak(v);
     }catch(e){ log('Brain error: '+e.message); setChip('webhook','bad'); speak('I had trouble thinking just now. Check the log on screen.'); }
     finally{ if(!isListening) setTimeout(startRecognition, 900); }
@@ -397,8 +430,10 @@
 
   const cfg = loadConfig();
   applyConfig(Object.assign({}, EMBEDDED, cfg||{}));
-  loadMemory();
-  if(history.length) log('Memory: '+history.length+' past messages loaded — Vick remembers your last session.');
+  (async ()=>{
+    const cloud = await sbLoad();
+    if(!cloud){ loadMemory(); if(history.length) log('Memory: '+history.length+' past messages loaded (on-device).'); }
+  })();
 
   const tapOverlay = document.getElementById('tapOverlay');
   if(IS_ANDROID){ tapOverlay.style.display='flex' }
