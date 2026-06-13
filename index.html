@@ -69,6 +69,14 @@
             <label for="prompt">Prompt (sent with each message)</label>
             <input id="prompt" type="text" placeholder="System prompt for Vick"/>
           </div>
+          <div>
+            <label for="elevenKey">ElevenLabs API Key (stored only in this browser — never committed)</label>
+            <input id="elevenKey" type="password" placeholder="xi-... your ElevenLabs key"/>
+          </div>
+          <div>
+            <label for="voiceId">ElevenLabs Voice ID (your Vick / Jarvis voice)</label>
+            <input id="voiceId" type="text" placeholder="e.g. 21m00Tcm4TlvDq8ikWAM"/>
+          </div>
           <div class="row">
             <button id="btnStart" class="btn-accent">▶ Start listening</button>
             <button id="btnStop" class="btn-stop">■ Stop</button>
@@ -90,7 +98,7 @@
             <label for="log">Log</label>
             <div id="log" class="log" aria-live="polite"></div>
           </div>
-          <div class="help">Tip: Android requires a user tap to enable mic/voice. This build shows a Start screen on phones and auto-starts on desktop.</div>
+          <div class="help">Tip: Android requires a user tap to enable mic/voice. This build shows a Start screen on phones and auto-starts on desktop. To give Vick a real (Jarvis-style) voice, paste your ElevenLabs API key + Voice ID above, Save, then press “Say Hi Ray” to test. Leave them blank to use the browser voice. Your key is stored only in this browser (localStorage) and is never committed to the repo.</div>
         </div>
       </section>
 
@@ -111,6 +119,8 @@
   const EMBEDDED = {
     webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
     prompt: "Tech Futurist — respond intelligently and conversationally to Ray.",
+    elevenKey: "",
+    voiceId: "",
     autostart: true,
     wakePhrase: true,
     sendWebhook: true
@@ -169,16 +179,19 @@
   function applyConfig(cfg){
     $("webhook").value = cfg.webhook||'';
     $("prompt").value = cfg.prompt||'';
+    $("elevenKey").value = cfg.elevenKey||'';
+    $("voiceId").value = cfg.voiceId||'';
     $("chkAutostart").checked = !!cfg.autostart;
     $("chkWake").checked = !!cfg.wakePhrase;
     $("chkSendWebhook").checked = !!cfg.sendWebhook;
     setChip('autostart', cfg.autostart? 'ok':'idle');
     setChip('webhook', cfg.sendWebhook? 'ok':'idle');
+    setChip('voice', (cfg.elevenKey && cfg.voiceId)? 'ok':'idle');
     setChip('wake','idle');
     isAwaitingCommand = !!cfg.wakePhrase;
   }
   function saveConfig(){
-    const cfg={ webhook:$("webhook").value, prompt:$("prompt").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
+    const cfg={ webhook:$("webhook").value, prompt:$("prompt").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
     try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); log('Settings saved.'); }catch(e){ log('Save error: '+e.message) }
   }
   function loadConfig(){
@@ -193,13 +206,42 @@
     const audio=new Audio('data:audio/wav;base64,UklGRl9vT1JXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAoAAAACAgICAgICAgIC');
     audio.play();
   }
-  function speak(text){
+  function speakBrowser(text){
     if(synth.speaking) synth.cancel();
     const u=new SpeechSynthesisUtterance(text);
     u.onstart=()=>setChip('voice','ok');
     u.onend=()=>setChip('voice','idle');
     u.onerror=(e)=>{ setChip('voice','bad'); log('TTS Error: '+e.error) };
     synth.speak(u);
+  }
+  // Vick's voice: ElevenLabs if a key + voice ID are set, else the browser's built-in voice.
+  let vickAudio = null;
+  async function speak(text){
+    const key = ($("elevenKey").value||'').trim();
+    const voice = ($("voiceId").value||'').trim();
+    if(!key || !voice){ speakBrowser(text); return; }
+    try{
+      setChip('voice','warn');
+      if(synth.speaking) synth.cancel();
+      if(vickAudio){ try{ vickAudio.pause(); }catch(e){} }
+      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}`, {
+        method:'POST',
+        headers:{ 'xi-api-key': key, 'Content-Type':'application/json', 'Accept':'audio/mpeg' },
+        body: JSON.stringify({ text, model_id:'eleven_turbo_v2_5', voice_settings:{ stability:0.4, similarity_boost:0.8 } })
+      });
+      if(!res.ok){ throw new Error('ElevenLabs HTTP '+res.status+(res.status===401?' (check API key)':res.status===422?' (check Voice ID)':'')); }
+      const url = URL.createObjectURL(await res.blob());
+      vickAudio = new Audio(url);
+      vickAudio.onplay = ()=> setChip('voice','ok');
+      vickAudio.onended = ()=>{ setChip('voice','idle'); URL.revokeObjectURL(url); };
+      vickAudio.onerror = ()=>{ setChip('voice','bad'); log('Voice playback error — using browser voice.'); speakBrowser(text); };
+      await vickAudio.play();
+      log('Vick spoke via ElevenLabs.');
+    }catch(e){
+      log('ElevenLabs error: '+e.message+' — using browser voice.');
+      setChip('voice','bad');
+      speakBrowser(text);
+    }
   }
 
   async function sendToWebhook(transcript){
@@ -248,6 +290,9 @@
   document.getElementById('chkWake').addEventListener('change', (e)=>{ isAwaitingCommand = e.target.checked; if(isListening){ setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; log('Mode switched.') } });
   document.getElementById('chkSendWebhook').addEventListener('change', (e)=>{ setChip('webhook', e.target.checked?'ok':'idle'); log(`Webhook ${e.target.checked?'enabled':'disabled'}.`) });
   document.getElementById('webhook').addEventListener('input', ()=> setChip('webhook', document.getElementById('webhook').value?'ok':'idle'));
+  const updateVoiceChip = ()=> setChip('voice', ($("elevenKey").value.trim() && $("voiceId").value.trim())?'ok':'idle');
+  document.getElementById('elevenKey').addEventListener('input', updateVoiceChip);
+  document.getElementById('voiceId').addEventListener('input', updateVoiceChip);
   document.getElementById('chkAutostart').addEventListener('change', (e)=> setChip('autostart', e.target.checked?'ok':'idle'));
 
   const cfg = loadConfig();

@@ -30,3 +30,17 @@ https://<yourusername>.github.io/vick-electric/
 - Wake phrase: “hey vick”
 - Theme: Electric (blue/green energy lines)
 - Autostart: enabled on desktop; tap-to-start on mobile.
+
+## 🎙️ Give Vick a Real (Jarvis) Voice — ElevenLabs
+By default Vick talks through the browser's built-in voice (robotic). To use a real ElevenLabs voice:
+
+1. **Create / pick the voice** at https://elevenlabs.io
+   - Easiest: open **Voices → Library**, pick a deep/calm male voice, and **Add to My Voices**.
+   - Custom "Jarvis": use **Voice Design** — describe it (e.g. *"calm, intelligent, slightly formal British male AI assistant, warm but precise"*) and save it.
+2. **Get the Voice ID** — open the voice → its ID looks like `21m00Tcm4TlvDq8ikWAM`.
+3. **Get your API key** — ElevenLabs → Profile → **API Key** (`xi-...`).
+4. In the dashboard, paste the **API Key** and **Voice ID** into their fields, press **💾 Save Settings**, then **“Say Hi Ray”** to test. The Voice chip turns green when configured.
+
+**Security:** the key is stored only in your browser's `localStorage` and is **never** written into `index.html` or committed to this repo. If Vick can't reach ElevenLabs (bad key, quota, offline), it automatically falls back to the browser voice so it never goes silent.
+
+> Note: ElevenLabs free tier has a monthly character limit; long replies use more credits. The build uses the low-latency `eleven_turbo_v2_5` model for snappy, conversational responses.
