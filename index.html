@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>Vick — Tech Futurist (Electric)</title>
+  <title>VICK — Personal Sovereign OS</title>
   <style>
     :root{ --bg:#070b13; --panel:#0b1120; --ink:#e6f0ff; --muted:#9bb1d6; --accent:#5ee3ff; --accent-2:#6aff9d; --danger:#ff6a6a; --ok:#6aff9d; --warn:#ffd36a; --card:#0b1222; --chip:#0f1a32; --ring: 0 0 0 2px rgba(94,227,255,.35), 0 10px 25px rgba(0,0,0,.35); }
     :root.light{ --bg:#f7f9ff; --panel:#ffffff; --ink:#0b1020; --muted:#42567a; --accent:#0077ff; --accent-2:#00a870; --danger:#d23030; --ok:#0e9c57; --warn:#a77900; --card:#ffffff; --chip:#e9f1ff; }
@@ -48,8 +48,8 @@
     <div class="title">
       <div class="vick-logo" aria-hidden="true"></div>
       <div>
-        <h1>Hi Ray — Cloud Vick (Tech Futurist)</h1>
-        <div class="muted">Wake phrase <span class="kbd">"hey vick"</span> • Auto-beep • Talk-back • <span class="kbd">BUILD 2 · ElevenLabs voice</span></div>
+        <h1>Hi Ray — VICK</h1>
+        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 3 · Claude brain + ElevenLabs voice</span></div>
       </div>
     </div>
 
@@ -65,20 +65,24 @@
       <section class="card">
         <div class="panel">
           <div>
-            <label for="webhook">Production Webhook URL (n8n)</label>
-            <input id="webhook" type="text" placeholder="https://.../webhook/..."/>
+            <label for="anthropicKey">🧠 Claude API Key — Vick's brain (stored only in this browser)</label>
+            <input id="anthropicKey" type="password" placeholder="sk-ant-... from console.anthropic.com"/>
           </div>
           <div>
-            <label for="prompt">Prompt (sent with each message)</label>
-            <input id="prompt" type="text" placeholder="System prompt for Vick"/>
+            <label for="model">Claude model</label>
+            <input id="model" type="text" placeholder="claude-sonnet-4-6"/>
           </div>
           <div>
-            <label for="elevenKey">ElevenLabs API Key (stored only in this browser — never committed)</label>
-            <input id="elevenKey" type="password" placeholder="xi-... your ElevenLabs key"/>
+            <label for="elevenKey">🎙️ ElevenLabs API Key — Vick's voice (optional; blank = browser voice)</label>
+            <input id="elevenKey" type="password" placeholder="your ElevenLabs key"/>
           </div>
           <div>
             <label for="voiceId">ElevenLabs Voice ID (your Vick / Jarvis voice)</label>
             <input id="voiceId" type="text" placeholder="e.g. 21m00Tcm4TlvDq8ikWAM"/>
+          </div>
+          <div>
+            <label for="webhook">n8n Webhook URL (optional — used only if no Claude key)</label>
+            <input id="webhook" type="text" placeholder="https://.../webhook/..."/>
           </div>
           <div class="row">
             <button id="btnStart" class="btn-accent">▶ Start listening</button>
@@ -101,15 +105,15 @@
             <label for="log">Log</label>
             <div id="log" class="log" aria-live="polite"></div>
           </div>
-          <div class="help">Tip: Android requires a user tap to enable mic/voice. This build shows a Start screen on phones and auto-starts on desktop. To give Vick a real (Jarvis-style) voice, paste your ElevenLabs API key + Voice ID above, Save, then press “Say Hi Ray” to test. Leave them blank to use the browser voice. Your key is stored only in this browser (localStorage) and is never committed to the repo.</div>
+          <div class="help">Setup: (1) Paste a <b>Claude API Key</b> — that's Vick's brain, so he can actually answer you. (2) Optional: <b>ElevenLabs key + Voice ID</b> for the Jarvis voice (blank = your phone's built-in voice). (3) Press <b>Save Settings</b>, then <b>Start listening</b> and just talk — no wake word needed. Keys are stored only in this browser and are never committed to the repo. On a phone you'll tap once to enable mic + sound.</div>
         </div>
       </section>
 
       <aside class="splash card">
         <div class="aura" aria-hidden="true"></div>
         <div style="text-align:center; z-index:1">
-          <div style="font-size:44px; font-weight:700; letter-spacing:.5px; margin-bottom:6px">Vick</div>
-          <div class="muted" style="font-size:14px">Tech Futurist • Cloud</div>
+          <div style="font-size:44px; font-weight:700; letter-spacing:.5px; margin-bottom:6px">VICK</div>
+          <div class="muted" style="font-size:14px">Personal Sovereign OS</div>
           <div style="margin-top:18px; font-size:13px; opacity:.9" id="splashMessage">"ready when you are"</div>
         </div>
         <div class="v-badge"><div class="mic-anim"></div><div class="muted">listening engine</div></div>
@@ -120,15 +124,27 @@
 <script>
 (function(){
   const EMBEDDED = {
-    webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
-    prompt: "Tech Futurist — respond intelligently and conversationally to Ray.",
+    anthropicKey: "",
+    model: "claude-sonnet-4-6",
     elevenKey: "",
     voiceId: "",
-    autostart: true,
-    wakePhrase: true,
-    sendWebhook: true
+    webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
+    autostart: false,
+    wakePhrase: false,
+    sendWebhook: false
   };
-  const GREETING = "Hi Ray — my listening engine is fully online and awaiting your command.";
+  // VICK's identity — from the Core Operating Prompt (v11.0). This is what makes Claude answer AS Vick.
+  const VICK_SYSTEM = [
+    "You are VICK — Ray Reese's personal sovereign operating system and advisor. Speak as one unified, calm voice.",
+    "Wake command: 'Hey Vick'. Default greeting: 'Hi Ray.' Voice/persona: kind, intelligent, direct, calm, honest, protective, actionable. Never robotic, preachy, manipulative, or wordy.",
+    "This is a SPOKEN conversation: keep replies short and natural — usually 1-3 sentences. No markdown, no lists, no headings. Plain spoken sentences only.",
+    "Mission: improve Ray's quality of life — reduce mental load, protect high-stakes decisions, get authorized work done. Be useful, not impressive. Ray has final authority on every meaningful decision.",
+    "Safety (never override): protect Ray's wellbeing; absolute family privacy; never store or ask for secrets/passwords; never manipulate or fabricate; be honest about uncertainty.",
+    "Action tiers: just do read-only/organizing/summarizing; for anything that sends, books, buys, publishes, or contacts someone, explain and get a clear yes first; for money, legal, medical, or irreversible actions, require a deliberate second confirmation. When unsure, ask.",
+    "If you don't know something, say so plainly. Address him as Ray."
+  ].join(" ");
+  const GREETING = "Hi Ray. Vick is online and listening.";
+  let history = []; // running conversation for Claude
   const IS_ANDROID = /Android/i.test(navigator.userAgent);
 
   const $ = (id)=>document.getElementById(id);
@@ -181,21 +197,22 @@
   const splashEl = document.getElementById('splashMessage');
 
   function applyConfig(cfg){
-    $("webhook").value = cfg.webhook||'';
-    $("prompt").value = cfg.prompt||'';
+    $("anthropicKey").value = cfg.anthropicKey||'';
+    $("model").value = cfg.model||EMBEDDED.model;
     $("elevenKey").value = cfg.elevenKey||'';
     $("voiceId").value = cfg.voiceId||'';
+    $("webhook").value = cfg.webhook||'';
     $("chkAutostart").checked = !!cfg.autostart;
     $("chkWake").checked = !!cfg.wakePhrase;
     $("chkSendWebhook").checked = !!cfg.sendWebhook;
     setChip('autostart', cfg.autostart? 'ok':'idle');
-    setChip('webhook', cfg.sendWebhook? 'ok':'idle');
+    setChip('webhook', (cfg.anthropicKey || cfg.sendWebhook)? 'ok':'idle');
     setChip('voice', (cfg.elevenKey && cfg.voiceId)? 'ok':'idle');
     setChip('wake','idle');
     isAwaitingCommand = !!cfg.wakePhrase;
   }
   function saveConfig(){
-    const cfg={ webhook:$("webhook").value, prompt:$("prompt").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
+    const cfg={ anthropicKey:$("anthropicKey").value, model:$("model").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, webhook:$("webhook").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
     try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); log('Settings saved.'); }catch(e){ log('Save error: '+e.message) }
   }
   function loadConfig(){
@@ -252,18 +269,50 @@
     }
   }
 
-  async function sendToWebhook(transcript){
-    const url=$("webhook").value; const p=$("prompt").value;
-    if(!url || !$("chkSendWebhook").checked){
-      const msg = $("chkSendWebhook").checked? 'Error: Webhook URL is missing.' : 'Webhook sending is disabled.';
-      log('Error: '+msg); speak(msg); setChip('webhook','bad'); return;
-    }
-    log('Sending command to Webhook...'); setChip('webhook','warn'); if(recognition) recognition.stop();
+  // Route what Ray says to Vick's brain: Claude if a key is set, else the n8n webhook.
+  async function respond(transcript){
+    if(!transcript) return;
+    const key = ($("anthropicKey").value||'').trim();
+    if(key){ return askClaude(transcript, key); }
+    if($("webhook").value && $("chkSendWebhook").checked){ return sendToWebhook(transcript); }
+    log('No brain connected — add a Claude API key in settings.');
+    speak("I don't have a brain connected yet. Add a Claude API key in settings and save, then I can answer you.");
+  }
+
+  async function askClaude(transcript, key){
+    const model = ($("model").value||'').trim() || EMBEDDED.model;
+    log('Vick is thinking…'); setChip('webhook','warn'); if(recognition) recognition.stop();
+    history.push({ role:'user', content: transcript });
+    if(history.length > 20) history = history.slice(-20);
     try{
-      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ transcript, prompt:p, user_id:'ray' }) });
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{
+          'content-type':'application/json',
+          'x-api-key': key,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body: JSON.stringify({ model, max_tokens:400, system: VICK_SYSTEM, messages: history })
+      });
+      if(!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('Claude HTTP '+res.status+(res.status===401?' (check API key)':res.status===404?' (check model name)':'')+' '+t.slice(0,140)); }
+      const data = await res.json();
+      const v = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : "I didn't catch a reply.";
+      history.push({ role:'assistant', content: v });
+      log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; setChip('webhook','ok'); speak(v);
+    }catch(e){ log('Brain error: '+e.message); setChip('webhook','bad'); speak('I had trouble thinking just now. Check the log on screen.'); }
+    finally{ if(!isListening) setTimeout(startRecognition, 900); }
+  }
+
+  async function sendToWebhook(transcript){
+    const url=$("webhook").value;
+    if(!url){ log('No webhook URL set.'); speak('No backend is configured.'); setChip('webhook','bad'); return; }
+    log('Sending to webhook…'); setChip('webhook','warn'); if(recognition) recognition.stop();
+    try{
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ transcript, user_id:'ray' }) });
       if(!res.ok) throw new Error('HTTP '+res.status);
-      const data = await res.json(); const v = data.response || 'I received the command, but the cloud returned an empty response.';
-      log(`Vick: "${v}"`); splashEl.textContent = `"${v.substring(0, 40)}..."`; speak(v); setChip('webhook','ok');
+      const data = await res.json(); const v = data.response || 'The cloud returned an empty response.';
+      log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; speak(v); setChip('webhook','ok');
     }catch(e){ log('Webhook Error: '+e.message); speak('I had a problem connecting to the cloud server.'); setChip('webhook','bad'); }
     finally{ if(!isListening) setTimeout(startRecognition, 900); }
   }
@@ -280,8 +329,8 @@
       if(vickSpeaking || (Date.now()-lastSpokeAt) < 700){ return; } // ignore Vick's own voice (no feedback loop)
       let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ if(ev.results[i].isFinal) final+=ev.results[i][0].transcript }
       if(!final) return; const lower = final.toLowerCase().trim(); log('User: "'+final+'"');
-      if(isAwaitingCommand){ if(lower.includes('hey vick')){ setChip('wake','ok'); handleBeep(); const cmd = lower.replace('hey vick','').trim(); log('WAKEWORD DETECTED. Command: "'+cmd+'"'); if(cmd) sendToWebhook(cmd); else speak('Yes?'); setTimeout(()=>{ isAwaitingCommand=$("chkWake").checked; setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; }, 480) } else { setChip('wake','warn') } }
-      else { sendToWebhook(lower) }
+      if(isAwaitingCommand){ if(lower.includes('hey vick')){ setChip('wake','ok'); handleBeep(); const cmd = final.replace(/hey vick/i,'').trim(); log('WAKEWORD DETECTED. Command: "'+cmd+'"'); if(cmd) respond(cmd); else speak('Yes?'); setTimeout(()=>{ isAwaitingCommand=$("chkWake").checked; setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; }, 480) } else { setChip('wake','warn') } }
+      else { respond(final.trim()) }
     };
     try{ recognition.start() }catch(e){ log('Start error: '+e.message); isListening=false }
   }
@@ -291,14 +340,16 @@
   document.getElementById('btnStop').addEventListener('click', stopRecognition);
   document.getElementById('btnBeep').addEventListener('click', handleBeep);
   document.getElementById('btnHum').addEventListener('click', ()=>log('Humming initiated (not implemented).'));
-  document.getElementById('btnHiRay').addEventListener('click', ()=>speak('Hi Ray, my listening engine is fully online and awaiting your command.'));
+  document.getElementById('btnHiRay').addEventListener('click', ()=>speak(GREETING));
   document.getElementById('btnTheme').addEventListener('click', ()=>{ document.documentElement.classList.toggle('light'); log('Theme toggled.') });
   document.getElementById('btnSave').addEventListener('click', saveConfig);
   document.getElementById('btnLoad').addEventListener('click', ()=>{ loadConfig(); log('Settings re-loaded.') });
 
   document.getElementById('chkWake').addEventListener('change', (e)=>{ isAwaitingCommand = e.target.checked; if(isListening){ setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; log('Mode switched.') } });
-  document.getElementById('chkSendWebhook').addEventListener('change', (e)=>{ setChip('webhook', e.target.checked?'ok':'idle'); log(`Webhook ${e.target.checked?'enabled':'disabled'}.`) });
-  document.getElementById('webhook').addEventListener('input', ()=> setChip('webhook', document.getElementById('webhook').value?'ok':'idle'));
+  const updateBrainChip = ()=> setChip('webhook', ($("anthropicKey").value.trim() || ($("webhook").value.trim() && $("chkSendWebhook").checked))?'ok':'idle');
+  document.getElementById('chkSendWebhook').addEventListener('change', updateBrainChip);
+  document.getElementById('webhook').addEventListener('input', updateBrainChip);
+  document.getElementById('anthropicKey').addEventListener('input', updateBrainChip);
   const updateVoiceChip = ()=> setChip('voice', ($("elevenKey").value.trim() && $("voiceId").value.trim())?'ok':'idle');
   document.getElementById('elevenKey').addEventListener('input', updateVoiceChip);
   document.getElementById('voiceId').addEventListener('input', updateVoiceChip);
