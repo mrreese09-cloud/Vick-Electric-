@@ -171,6 +171,7 @@
   window.addEventListener('resize', ()=>{ cancelAnimationFrame(rafId); size(); tick(); });
 
   let recognition, isListening = false, isAwaitingCommand = false;
+  let vickSpeaking = false, lastSpokeAt = 0; // mic ignores Vick's own voice while/just after he speaks
   const synth = window.speechSynthesis;
   const WAKE_PHRASE = 'hey vick';
   const CONFIG_KEY = 'vick_dashboard_config';
@@ -206,12 +207,14 @@
     const audio=new Audio('data:audio/wav;base64,UklGRl9vT1JXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAoAAAACAgICAgICAgIC');
     audio.play();
   }
+  function startSpeaking(){ vickSpeaking = true; }
+  function endSpeaking(){ vickSpeaking = false; lastSpokeAt = Date.now(); }
   function speakBrowser(text){
     if(synth.speaking) synth.cancel();
     const u=new SpeechSynthesisUtterance(text);
-    u.onstart=()=>setChip('voice','ok');
-    u.onend=()=>setChip('voice','idle');
-    u.onerror=(e)=>{ setChip('voice','bad'); log('TTS Error: '+e.error) };
+    u.onstart=()=>{ startSpeaking(); setChip('voice','ok'); };
+    u.onend=()=>{ endSpeaking(); setChip('voice','idle'); };
+    u.onerror=(e)=>{ endSpeaking(); setChip('voice','bad'); log('TTS Error: '+e.error) };
     synth.speak(u);
   }
   // Vick's voice: ElevenLabs if a key + voice ID are set, else the browser's built-in voice.
@@ -222,6 +225,7 @@
     if(!key || !voice){ speakBrowser(text); return; }
     try{
       setChip('voice','warn');
+      startSpeaking(); // mute mic immediately so the round-trip latency can't capture stray audio
       if(synth.speaking) synth.cancel();
       if(vickAudio){ try{ vickAudio.pause(); }catch(e){} }
       const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}`, {
@@ -233,11 +237,12 @@
       const url = URL.createObjectURL(await res.blob());
       vickAudio = new Audio(url);
       vickAudio.onplay = ()=> setChip('voice','ok');
-      vickAudio.onended = ()=>{ setChip('voice','idle'); URL.revokeObjectURL(url); };
-      vickAudio.onerror = ()=>{ setChip('voice','bad'); log('Voice playback error — using browser voice.'); speakBrowser(text); };
+      vickAudio.onended = ()=>{ endSpeaking(); setChip('voice','idle'); URL.revokeObjectURL(url); };
+      vickAudio.onerror = ()=>{ endSpeaking(); setChip('voice','bad'); log('Voice playback error — using browser voice.'); speakBrowser(text); };
       await vickAudio.play();
       log('Vick spoke via ElevenLabs.');
     }catch(e){
+      endSpeaking();
       log('ElevenLabs error: '+e.message+' — using browser voice.');
       setChip('voice','bad');
       speakBrowser(text);
@@ -269,6 +274,7 @@
     recognition.onend=()=>{ if(isListening){ log('Recognition ended, restarting...'); try{ recognition.start() }catch(e){ setTimeout(()=>isListening&&recognition.start(), 1600) } } else { setChip('mic','idle'); setChip('wake','idle'); splashEl.textContent='"ready when you are"'; log('Listening stopped.') }};
     recognition.onerror=(ev)=>{ setChip('mic','bad'); log('Recognition error: '+ev.error); isListening=false; stopRecognition(); };
     recognition.onresult=(ev)=>{
+      if(vickSpeaking || (Date.now()-lastSpokeAt) < 700){ return; } // ignore Vick's own voice (no feedback loop)
       let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ if(ev.results[i].isFinal) final+=ev.results[i][0].transcript }
       if(!final) return; const lower = final.toLowerCase().trim(); log('User: "'+final+'"');
       if(isAwaitingCommand){ if(lower.includes('hey vick')){ setChip('wake','ok'); handleBeep(); const cmd = lower.replace('hey vick','').trim(); log('WAKEWORD DETECTED. Command: "'+cmd+'"'); if(cmd) sendToWebhook(cmd); else speak('Yes?'); setTimeout(()=>{ isAwaitingCommand=$("chkWake").checked; setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; }, 480) } else { setChip('wake','warn') } }
