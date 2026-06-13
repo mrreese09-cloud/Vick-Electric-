@@ -49,7 +49,7 @@
       <div class="vick-logo" aria-hidden="true"></div>
       <div>
         <h1>Hi Ray — VICK</h1>
-        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 6 · free Gemini brain + voice</span></div>
+        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 7 · Gemini brain + persistent memory</span></div>
       </div>
     </div>
 
@@ -99,6 +99,7 @@
           <div class="row">
             <button id="btnSave" class="btn-save">💾 Save Settings</button>
             <button id="btnLoad" class="btn-ghost">Load Settings</button>
+            <button id="btnClearMem" class="btn-ghost">🧠 Clear Memory</button>
           </div>
           <div class="row">
             <div class="switch"><input type="checkbox" id="chkAutostart"><label for="chkAutostart">Auto-start in 3s</label></div>
@@ -153,7 +154,10 @@
     "CONTEXT — Ray's world now: Guided Support LLC (for-profit CA disability services, ILS/SLS, in vendorization with Harbor Regional Center) — drive it to revenue. Reigne Intelligence (AI-governance advisory selling VICK-style systems) — land first paying clients. VICK governs daily; Phase 1 live, Phase 2 autonomy gated on Ray. Risk posture: growth-oriented, downside-protected — aggressive on cheap reversible bets, conservative on irreversible or large-dollar, legal, or medical ones. Keep it concise and direct."
   ].join(" ");
   const GREETING = "Hi Ray. Vick is online and listening.";
-  let history = []; // running conversation for Claude
+  let history = []; // running conversation — VICK's persistent memory (External State Layer v0)
+  const MEM_KEY = 'vick_memory_v1';
+  function saveMemory(){ try{ localStorage.setItem(MEM_KEY, JSON.stringify(history.slice(-30))); }catch(e){} }
+  function loadMemory(){ try{ const s=localStorage.getItem(MEM_KEY); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) history=a; } }catch(e){} }
   const IS_ANDROID = /Android/i.test(navigator.userAgent);
 
   const $ = (id)=>document.getElementById(id);
@@ -307,7 +311,7 @@
       const data = await res.json();
       const c = data.candidates && data.candidates[0];
       const v = (c && c.content && c.content.parts && c.content.parts[0] && c.content.parts[0].text) ? c.content.parts[0].text.trim() : "I didn't catch a reply.";
-      history.push({ role:'assistant', content: v });
+      history.push({ role:'assistant', content: v }); saveMemory();
       log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; setChip('webhook','ok'); speak(v);
     }catch(e){ log('Brain error: '+e.message); setChip('webhook','bad'); speak('I had trouble thinking just now. Check the log on screen.'); }
     finally{ if(!isListening) setTimeout(startRecognition, 900); }
@@ -332,7 +336,7 @@
       if(!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('Claude HTTP '+res.status+(res.status===401?' (check API key)':res.status===404?' (check model name)':'')+' '+t.slice(0,140)); }
       const data = await res.json();
       const v = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : "I didn't catch a reply.";
-      history.push({ role:'assistant', content: v });
+      history.push({ role:'assistant', content: v }); saveMemory();
       log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; setChip('webhook','ok'); speak(v);
     }catch(e){ log('Brain error: '+e.message); setChip('webhook','bad'); speak('I had trouble thinking just now. Check the log on screen.'); }
     finally{ if(!isListening) setTimeout(startRecognition, 900); }
@@ -378,6 +382,7 @@
   document.getElementById('btnTheme').addEventListener('click', ()=>{ document.documentElement.classList.toggle('light'); log('Theme toggled.') });
   document.getElementById('btnSave').addEventListener('click', saveConfig);
   document.getElementById('btnLoad').addEventListener('click', ()=>{ loadConfig(); log('Settings re-loaded.') });
+  document.getElementById('btnClearMem').addEventListener('click', ()=>{ history=[]; try{ localStorage.removeItem(MEM_KEY); }catch(e){} splashEl.textContent='"ready when you are"'; log('Memory cleared — fresh start.'); });
 
   document.getElementById('chkWake').addEventListener('change', (e)=>{ isAwaitingCommand = e.target.checked; if(isListening){ setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; log('Mode switched.') } });
   const updateBrainChip = ()=> setChip('webhook', ($("geminiKey").value.trim() || $("anthropicKey").value.trim() || ($("webhook").value.trim() && $("chkSendWebhook").checked))?'ok':'idle');
@@ -392,6 +397,8 @@
 
   const cfg = loadConfig();
   applyConfig(Object.assign({}, EMBEDDED, cfg||{}));
+  loadMemory();
+  if(history.length) log('Memory: '+history.length+' past messages loaded — Vick remembers your last session.');
 
   const tapOverlay = document.getElementById('tapOverlay');
   if(IS_ANDROID){ tapOverlay.style.display='flex' }
