@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vick — Tech Futurist (Electric)</title>
+  <style>
+    :root{ --bg:#070b13; --panel:#0b1120; --ink:#e6f0ff; --muted:#9bb1d6; --accent:#5ee3ff; --accent-2:#6aff9d; --danger:#ff6a6a; --ok:#6aff9d; --warn:#ffd36a; --card:#0b1222; --chip:#0f1a32; --ring: 0 0 0 2px rgba(94,227,255,.35), 0 10px 25px rgba(0,0,0,.35); }
+    :root.light{ --bg:#f7f9ff; --panel:#ffffff; --ink:#0b1020; --muted:#42567a; --accent:#0077ff; --accent-2:#00a870; --danger:#d23030; --ok:#0e9c57; --warn:#a77900; --card:#ffffff; --chip:#e9f1ff; }
+    *{box-sizing:border-box} html,body{height:100%} body{margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "SF Pro Text", Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; background:var(--bg); color:var(--ink);}
+    .electric-wrap{position:fixed; inset:0; overflow:hidden; pointer-events:none;} canvas#electric{position:absolute; inset:0; filter: drop-shadow(0 0 8px rgba(94,227,255,.65)) drop-shadow(0 0 18px rgba(106,255,157,.35)); opacity:.65;}
+    .grid-glow{position:absolute; inset:-20% -20% -20% -20%; background: radial-gradient(1200px 600px at 70% -10%, rgba(94,227,255,.08), transparent 60%), radial-gradient(1200px 600px at 10% 120%, rgba(106,255,157,.08), transparent 60%); mask-image: radial-gradient(70% 70% at 50% 50%, #000 65%, transparent 100%);}
+    .wrap{max-width:1100px; margin:32px auto; padding:24px; position:relative} .hero{display:grid; grid-template-columns: 1.2fr .8fr; gap:18px; align-items:stretch} @media (max-width:960px){ .hero{grid-template-columns:1fr} .wrap{padding:14px; margin:16px auto} }
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0)) , var(--card); border:1px solid rgba(140,170,255,.18); border-radius:20px; padding:18px; box-shadow: var(--ring); position:relative; overflow:hidden}
+    .title{display:flex; align-items:center; gap:12px} .vick-logo{width:40px; height:40px; border-radius:12px; background: conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent)); filter: saturate(1.2); box-shadow: 0 8px 30px rgba(94,227,255,.25)} h1{font-size:28px; margin:0} .muted{color:var(--muted)}
+    .title:after{content:""; position:absolute; left:16px; right:16px; bottom:-1px; height:2px; background:linear-gradient(90deg, transparent, rgba(94,227,255,.9), rgba(106,255,157,.9), transparent); filter:blur(0.4px); opacity:.6}
+    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px} .chip{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; background:var(--chip); border:1px solid rgba(140,170,255,.22); font-size:12px; position:relative; overflow:hidden} .chip.ok::before{content:""; position:absolute; inset:-2px; background:linear-gradient(120deg, transparent 0 20%, rgba(94,227,255,.4) 50%, transparent 80%); transform:translateX(-120%); animation: sweep 2.4s linear infinite} @keyframes sweep{to{transform:translateX(120%)}}
+    .dot{width:8px;height:8px;border-radius:50%} .ok{background:var(--ok)} .warn{background:var(--warn)} .bad{background:var(--danger)} .idle{background:#7a89a8}
+    .panel{display:grid; grid-template-columns:1fr 1fr; gap:14px} @media (max-width:800px){ .panel{grid-template-columns:1fr} } label{font-size:12px; color:var(--muted)}
+    input[type="text"], textarea{width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(140,170,255,.25); background:rgba(255,255,255,.02); color:var(--ink); outline:none} textarea{min-height:110px}
+    .row{display:flex; gap:10px; flex-wrap:wrap} button{appearance:none; border:none; background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02)); color:var(--ink); padding:12px 14px; border-radius:14px; cursor:pointer; border:1px solid rgba(140,170,255,.28); transition: transform .05s ease, box-shadow .2s ease; box-shadow: var(--ring); position:relative; overflow:hidden} button:active{ transform: translateY(1px) } button:hover{ box-shadow: 0 0 0 2px rgba(94,227,255,.35), 0 0 30px rgba(94,227,255,.25)} .btn-accent{ background:linear-gradient(180deg, rgba(94,227,255,.22), rgba(94,227,255,.08)); border-color: rgba(94,227,255,.5) } .btn-stop{ background:linear-gradient(180deg, rgba(255,106,106,.25), rgba(255,106,106,.08)); border-color: rgba(255,106,106,.5) } .btn-save{ background:linear-gradient(180deg, rgba(106,255,157,.25), rgba(106,255,157,.08)); border-color: rgba(106,255,157,.5) } .btn-ghost{ background:transparent }
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:rgba(140,170,255,.12); padding:2px 6px; border-radius:6px; border:1px solid rgba(140,170,255,.25)} .log{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:rgba(0,0,0,.35); border-radius:12px; padding:12px; min-height:160px; white-space:pre-wrap; overflow:auto; border:1px solid rgba(140,170,255,.2)} .help{font-size:12px; color:var(--muted)}
+    .splash{border-radius:18px; height:100%; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; background: linear-gradient(135deg, rgba(94,227,255,.08), rgba(106,255,157,.08) 60%, transparent 100%), var(--panel);} .aura{position:absolute; width:72vmin; height:72vmin; border-radius:50%; background:radial-gradient(circle, rgba(94,227,255,.35), transparent 60%); filter: blur(38px); animation: pulse 6s ease-in-out infinite alternate} @keyframes pulse{ from{ transform: scale(0.9) translate(-10px, -10px)} to{ transform: scale(1.06) translate(10px, 10px)} } .v-badge{position:absolute; inset:auto 18px 18px auto; display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.35); border:1px solid rgba(140,170,255,.2); padding:10px 12px; border-radius:999px} .mic-anim{width:10px; height:18px; background:linear-gradient(to top, var(--accent), var(--accent-2)); border-radius:6px; animation: mic 1.2s ease-in-out infinite} @keyframes mic{ 0%,100%{ height:8px; opacity:.6 } 50%{ height:22px; opacity:1 } }
+    .tap-overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(3,6,12,.75); backdrop-filter: blur(6px); z-index:999} .tap-card{background:var(--panel); border:1px solid rgba(140,170,255,.28); border-radius:16px; padding:18px; text-align:center; max-width:360px; width:92%} .tap-card h2{margin:0 0 8px 0}
+  </style>
+</head>
+<body>
+  <div class="electric-wrap" aria-hidden="true">
+    <canvas id="electric"></canvas>
+    <div class="grid-glow"></div>
+  </div>
+
+  <div id="tapOverlay" class="tap-overlay">
+    <div class="tap-card">
+      <h2>Start Vick</h2>
+      <p class="muted" style="margin-top:4px">Tap once to enable voice + mic on mobile</p>
+      <div class="row" style="justify-content:center; margin-top:10px">
+        <button id="btnTapStart" class="btn-accent">▶ Start Vick</button>
+        <button id="btnTapTheme" class="btn-ghost">Theme</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="title">
+      <div class="vick-logo" aria-hidden="true"></div>
+      <div>
+        <h1>Hi Ray — Cloud Vick (Tech Futurist)</h1>
+        <div class="muted">Wake phrase <span class="kbd">"hey vick"</span> • Auto-beep • Talk-back • One‑file HTML • Electric theme</div>
+      </div>
+    </div>
+
+    <div class="chips" id="statusChips">
+      <span class="chip" id="chipMicWrap"><span class="dot idle" id="chipMic"></span>Mic</span>
+      <span class="chip" id="chipVoiceWrap"><span class="dot idle" id="chipVoice"></span>Voice</span>
+      <span class="chip" id="chipWakeWrap"><span class="dot idle" id="chipWake"></span>Wakeword</span>
+      <span class="chip" id="chipWebhookWrap"><span class="dot idle" id="chipWebhook"></span>Webhook</span>
+      <span class="chip" id="chipAutostartWrap"><span class="dot idle" id="chipAutostart"></span>Autostart</span>
+    </div>
+
+    <div class="hero">
+      <section class="card">
+        <div class="panel">
+          <div>
+            <label for="webhook">Production Webhook URL (n8n)</label>
+            <input id="webhook" type="text" placeholder="https://.../webhook/..."/>
+          </div>
+          <div>
+            <label for="prompt">Prompt (sent with each message)</label>
+            <input id="prompt" type="text" placeholder="System prompt for Vick"/>
+          </div>
+          <div class="row">
+            <button id="btnStart" class="btn-accent">▶ Start listening</button>
+            <button id="btnStop" class="btn-stop">■ Stop</button>
+            <button id="btnBeep">Beep</button>
+            <button id="btnHum" class="btn-ghost">Hum</button>
+            <button id="btnHiRay">Say “Hi Ray”</button>
+            <button id="btnTheme" class="btn-ghost">Theme</button>
+          </div>
+          <div class="row">
+            <button id="btnSave" class="btn-save">💾 Save Settings</button>
+            <button id="btnLoad" class="btn-ghost">Load Settings</button>
+          </div>
+          <div class="row">
+            <div class="switch"><input type="checkbox" id="chkAutostart"><label for="chkAutostart">Auto-start in 3s</label></div>
+            <div class="switch"><input type="checkbox" id="chkWake"><label for="chkWake">Enable wake phrase</label></div>
+            <div class="switch"><input type="checkbox" id="chkSendWebhook"><label for="chkSendWebhook">Send to webhook</label></div>
+          </div>
+          <div>
+            <label for="log">Log</label>
+            <div id="log" class="log" aria-live="polite"></div>
+          </div>
+          <div class="help">Tip: Android requires a user tap to enable mic/voice. This build shows a Start screen on phones and auto-starts on desktop.</div>
+        </div>
+      </section>
+
+      <aside class="splash card">
+        <div class="aura" aria-hidden="true"></div>
+        <div style="text-align:center; z-index:1">
+          <div style="font-size:44px; font-weight:700; letter-spacing:.5px; margin-bottom:6px">Vick</div>
+          <div class="muted" style="font-size:14px">Tech Futurist • Cloud</div>
+          <div style="margin-top:18px; font-size:13px; opacity:.9" id="splashMessage">"ready when you are"</div>
+        </div>
+        <div class="v-badge"><div class="mic-anim"></div><div class="muted">listening engine</div></div>
+      </aside>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const EMBEDDED = {
+    webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
+    prompt: "Tech Futurist — respond intelligently and conversationally to Ray.",
+    autostart: true,
+    wakePhrase: true,
+    sendWebhook: true
+  };
+  const GREETING = "Hi Ray — my listening engine is fully online and awaiting your command.";
+  const IS_ANDROID = /Android/i.test(navigator.userAgent);
+
+  const $ = (id)=>document.getElementById(id);
+  const logEl = $("log");
+  const chips = {mic:$("chipMic"), voice:$("chipVoice"), wake:$("chipWake"), webhook:$("chipWebhook"), autostart:$("chipAutostart")};
+  const chipWraps = {mic:$("chipMicWrap"), voice:$("chipVoiceWrap"), wake:$("chipWakeWrap"), webhook:$("chipWebhookWrap"), autostart:$("chipAutostartWrap")};
+  const setChip = (c, m)=>{ chips[c].className = "dot "+(m||"idle"); chipWraps[c].classList.toggle('ok', m==='ok') };
+  const log = (m)=>{ const t=new Date().toLocaleTimeString(); logEl.textContent += `[${t}] ${m}\n`; logEl.scrollTop=logEl.scrollHeight; };
+
+  const canvas = document.getElementById('electric');
+  const ctx = canvas.getContext('2d');
+  let W=0,H=0, rafId; 
+  function size(){ W=canvas.width=window.innerWidth*2; H=canvas.height=window.innerHeight*2; }
+  function rand(a,b){ return a+Math.random()*(b-a) }
+  function bolt(){
+    const segments = IS_ANDROID ? 12 : 18;
+    const x0 = rand(-W*0.1, W*0.2), y0 = rand(0, H*0.4);
+    const x1 = rand(W*0.8, W*1.1), y1 = rand(H*0.6, H);
+    const pts=[{x:x0,y:y0}];
+    for(let i=1;i<segments;i++){
+      const t=i/segments; const x=x0+(x1-x0)*t + rand(-60,60); const y=y0+(y1-y0)*t + rand(-40,40);
+      pts.push({x,y});
+    }
+    pts.push({x:x1,y:y1});
+    const hue = Math.random()<.5 ? 185 : 145;
+    const alpha = IS_ANDROID ? 0.045 : 0.07;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for(const p of pts){ ctx.lineTo(p.x,p.y) }
+    ctx.lineWidth = IS_ANDROID ? 2.2 : 2.8;
+    ctx.strokeStyle = `hsla(${hue} 100% 70% / ${alpha})`;
+    ctx.shadowBlur = IS_ANDROID ? 18 : 28;
+    ctx.shadowColor = `hsla(${hue} 100% 60% / ${alpha*6})`;
+    ctx.stroke();
+  }
+  function tick(){
+    ctx.clearRect(0,0,W,H);
+    const count = IS_ANDROID ? 3 : 6;
+    for(let i=0;i<count;i++) bolt();
+    rafId = requestAnimationFrame(tick);
+  }
+  size(); tick();
+  window.addEventListener('resize', ()=>{ cancelAnimationFrame(rafId); size(); tick(); });
+
+  let recognition, isListening = false, isAwaitingCommand = false;
+  const synth = window.speechSynthesis;
+  const WAKE_PHRASE = 'hey vick';
+  const CONFIG_KEY = 'vick_dashboard_config';
+  const splashEl = document.getElementById('splashMessage');
+
+  function applyConfig(cfg){
+    $("webhook").value = cfg.webhook||'';
+    $("prompt").value = cfg.prompt||'';
+    $("chkAutostart").checked = !!cfg.autostart;
+    $("chkWake").checked = !!cfg.wakePhrase;
+    $("chkSendWebhook").checked = !!cfg.sendWebhook;
+    setChip('autostart', cfg.autostart? 'ok':'idle');
+    setChip('webhook', cfg.sendWebhook? 'ok':'idle');
+    setChip('wake','idle');
+    isAwaitingCommand = !!cfg.wakePhrase;
+  }
+  function saveConfig(){
+    const cfg={ webhook:$("webhook").value, prompt:$("prompt").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
+    try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); log('Settings saved.'); }catch(e){ log('Save error: '+e.message) }
+  }
+  function loadConfig(){
+    try{
+      const s=localStorage.getItem(CONFIG_KEY);
+      if(!s){ log('No saved config — using embedded defaults.'); applyConfig(EMBEDDED); return EMBEDDED }
+      const cfg = JSON.parse(s); log('Settings loaded.'); applyConfig(Object.assign({}, EMBEDDED, cfg)); return cfg;
+    }catch(e){ log('Load error: '+e.message+' — using embedded defaults.'); applyConfig(EMBEDDED); return EMBEDDED }
+  }
+
+  function handleBeep(){
+    const audio=new Audio('data:audio/wav;base64,UklGRl9vT1JXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAoAAAACAgICAgICAgIC');
+    audio.play();
+  }
+  function speak(text){
+    if(synth.speaking) synth.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.onstart=()=>setChip('voice','ok');
+    u.onend=()=>setChip('voice','idle');
+    u.onerror=(e)=>{ setChip('voice','bad'); log('TTS Error: '+e.error) };
+    synth.speak(u);
+  }
+
+  async function sendToWebhook(transcript){
+    const url=$("webhook").value; const p=$("prompt").value;
+    if(!url || !$("chkSendWebhook").checked){
+      const msg = $("chkSendWebhook").checked? 'Error: Webhook URL is missing.' : 'Webhook sending is disabled.';
+      log('Error: '+msg); speak(msg); setChip('webhook','bad'); return;
+    }
+    log('Sending command to Webhook...'); setChip('webhook','warn'); if(recognition) recognition.stop();
+    try{
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ transcript, prompt:p, user_id:'ray' }) });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json(); const v = data.response || 'I received the command, but the cloud returned an empty response.';
+      log(`Vick: "${v}"`); splashEl.textContent = `"${v.substring(0, 40)}..."`; speak(v); setChip('webhook','ok');
+    }catch(e){ log('Webhook Error: '+e.message); speak('I had a problem connecting to the cloud server.'); setChip('webhook','bad'); }
+    finally{ if(!isListening) setTimeout(startRecognition, 900); }
+  }
+
+  function startRecognition(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ log('FATAL: Web Speech API not supported or insecure origin. Use Chrome over HTTPS/localhost.'); speak('Speech recognition is not supported here.'); return }
+    if(isListening) return;
+    recognition = new SR(); recognition.continuous=true; recognition.interimResults=false; recognition.lang='en-US';
+    recognition.onstart=()=>{ isListening=true; isAwaitingCommand=$("chkWake").checked; setChip('mic','ok'); setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; log('Listening started. Mode: '+(isAwaitingCommand?'WAKEWORD':'CONTINUOUS')) };
+    recognition.onend=()=>{ if(isListening){ log('Recognition ended, restarting...'); try{ recognition.start() }catch(e){ setTimeout(()=>isListening&&recognition.start(), 1600) } } else { setChip('mic','idle'); setChip('wake','idle'); splashEl.textContent='"ready when you are"'; log('Listening stopped.') }};
+    recognition.onerror=(ev)=>{ setChip('mic','bad'); log('Recognition error: '+ev.error); isListening=false; stopRecognition(); };
+    recognition.onresult=(ev)=>{
+      let final=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ if(ev.results[i].isFinal) final+=ev.results[i][0].transcript }
+      if(!final) return; const lower = final.toLowerCase().trim(); log('User: "'+final+'"');
+      if(isAwaitingCommand){ if(lower.includes('hey vick')){ setChip('wake','ok'); handleBeep(); const cmd = lower.replace('hey vick','').trim(); log('WAKEWORD DETECTED. Command: "'+cmd+'"'); if(cmd) sendToWebhook(cmd); else speak('Yes?'); setTimeout(()=>{ isAwaitingCommand=$("chkWake").checked; setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; }, 480) } else { setChip('wake','warn') } }
+      else { sendToWebhook(lower) }
+    };
+    try{ recognition.start() }catch(e){ log('Start error: '+e.message); isListening=false }
+  }
+  function stopRecognition(){ if(recognition){ isListening=false; recognition.stop(); recognition=null } if(synth.speaking) synth.cancel() }
+
+  document.getElementById('btnStart').addEventListener('click', ()=>{ if(!isListening){ speak(GREETING); startRecognition() } });
+  document.getElementById('btnStop').addEventListener('click', stopRecognition);
+  document.getElementById('btnBeep').addEventListener('click', handleBeep);
+  document.getElementById('btnHum').addEventListener('click', ()=>log('Humming initiated (not implemented).'));
+  document.getElementById('btnHiRay').addEventListener('click', ()=>speak('Hi Ray, my listening engine is fully online and awaiting your command.'));
+  document.getElementById('btnTheme').addEventListener('click', ()=>{ document.documentElement.classList.toggle('light'); log('Theme toggled.') });
+  document.getElementById('btnSave').addEventListener('click', saveConfig);
+  document.getElementById('btnLoad').addEventListener('click', ()=>{ loadConfig(); log('Settings re-loaded.') });
+
+  document.getElementById('chkWake').addEventListener('change', (e)=>{ isAwaitingCommand = e.target.checked; if(isListening){ setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; log('Mode switched.') } });
+  document.getElementById('chkSendWebhook').addEventListener('change', (e)=>{ setChip('webhook', e.target.checked?'ok':'idle'); log(`Webhook ${e.target.checked?'enabled':'disabled'}.`) });
+  document.getElementById('webhook').addEventListener('input', ()=> setChip('webhook', document.getElementById('webhook').value?'ok':'idle'));
+  document.getElementById('chkAutostart').addEventListener('change', (e)=> setChip('autostart', e.target.checked?'ok':'idle'));
+
+  const cfg = loadConfig();
+  applyConfig(Object.assign({}, EMBEDDED, cfg||{}));
+
+  const tapOverlay = document.getElementById('tapOverlay');
+  if(IS_ANDROID){ tapOverlay.style.display='flex' }
+  document.getElementById('btnTapStart').addEventListener('click', ()=>{ tapOverlay.style.display='none'; document.getElementById('btnStart').click() });
+  document.getElementById('btnTapTheme').addEventListener('click', ()=> document.documentElement.classList.toggle('light'));
+
+  if(!IS_ANDROID && document.getElementById('chkAutostart').checked){
+    setTimeout(()=>{ document.getElementById('btnStart').click(); }, 1200);
+    log('Auto-start in ~1s...'); setChip('autostart','ok');
+  }
+})();
+</script>
+</body>
+</html>
