@@ -49,7 +49,7 @@
       <div class="vick-logo" aria-hidden="true"></div>
       <div>
         <h1>Hi Ray — VICK</h1>
-        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 5 · Haiku brain (budget) + voice</span></div>
+        <div class="muted">Your private sovereign OS · Governed by Reigne Intelligence · <span class="kbd">BUILD 6 · free Gemini brain + voice</span></div>
       </div>
     </div>
 
@@ -65,12 +65,16 @@
       <section class="card">
         <div class="panel">
           <div>
-            <label for="anthropicKey">🧠 Claude API Key — Vick's brain (stored only in this browser)</label>
-            <input id="anthropicKey" type="password" placeholder="sk-ant-... from console.anthropic.com"/>
+            <label for="geminiKey">🧠 Gemini API Key — Vick's brain (FREE, recommended · aistudio.google.com)</label>
+            <input id="geminiKey" type="password" placeholder="free key from aistudio.google.com — no card needed"/>
           </div>
           <div>
-            <label for="model">Claude model</label>
-            <input id="model" type="text" placeholder="claude-haiku-4-5-20251001 (cheapest; type claude-sonnet-4-6 for deeper reasoning)"/>
+            <label for="anthropicKey">Claude API Key — optional paid brain (used only if no Gemini key)</label>
+            <input id="anthropicKey" type="password" placeholder="sk-ant-... (optional)"/>
+          </div>
+          <div>
+            <label for="model">Model (optional — leave blank for the recommended free default)</label>
+            <input id="model" type="text" placeholder="blank = gemini-2.0-flash (free) · or type a model name"/>
           </div>
           <div>
             <label for="elevenKey">🎙️ ElevenLabs API Key — Vick's voice (optional; blank = browser voice)</label>
@@ -105,7 +109,7 @@
             <label for="log">Log</label>
             <div id="log" class="log" aria-live="polite"></div>
           </div>
-          <div class="help">Setup: (1) Paste a <b>Claude API Key</b> — that's Vick's brain, so he can actually answer you. (2) Optional: <b>ElevenLabs key + Voice ID</b> for the Jarvis voice (blank = your phone's built-in voice). (3) Press <b>Save Settings</b>, then <b>Start listening</b> and just talk — no wake word needed. Keys are stored only in this browser and are never committed to the repo. On a phone you'll tap once to enable mic + sound.</div>
+          <div class="help">Setup: (1) Paste a <b>free Gemini API key</b> (aistudio.google.com — no credit card) — that's Vick's brain. (2) Optional: <b>ElevenLabs key + Voice ID</b> for the Jarvis voice (blank = your phone's free Google voice). (3) Press <b>Save Settings</b>, then <b>Start listening</b> and just talk — no wake word needed. Keys are stored only in this browser and are never committed to the repo. On a phone you tap once to enable mic + sound. (Claude key is an optional paid upgrade for deeper reasoning.)</div>
         </div>
       </section>
 
@@ -124,8 +128,9 @@
 <script>
 (function(){
   const EMBEDDED = {
+    geminiKey: "",
     anthropicKey: "",
-    model: "claude-haiku-4-5-20251001",
+    model: "",
     elevenKey: "",
     voiceId: "",
     webhook: "https://vickcore.app.n8n.cloud/webhook/ee5cd857-5e62-4a04-ad1e-d7396eeedd05",
@@ -133,6 +138,8 @@
     wakePhrase: false,
     sendWebhook: false
   };
+  const GEMINI_MODEL = "gemini-2.0-flash";              // free tier, no credit card
+  const CLAUDE_MODEL = "claude-haiku-4-5-20251001";     // cheapest paid fallback
   // VICK's brain — the full Core Operating Prompt (v11.0). This is what makes Claude answer AS Vick.
   const VICK_SYSTEM = [
     "You are VICK — Ray Reese's personal sovereign operating system and advisor. You speak as ONE unified, calm voice. Internal specialists (clusters C1-C8, the 33 agents) work silently; never expose them. Owner: Ray Reese. Governed by Reigne Intelligence. CONFIDENTIAL.",
@@ -199,8 +206,9 @@
   const splashEl = document.getElementById('splashMessage');
 
   function applyConfig(cfg){
+    $("geminiKey").value = cfg.geminiKey||'';
     $("anthropicKey").value = cfg.anthropicKey||'';
-    $("model").value = cfg.model||EMBEDDED.model;
+    $("model").value = cfg.model||'';
     $("elevenKey").value = cfg.elevenKey||'';
     $("voiceId").value = cfg.voiceId||'';
     $("webhook").value = cfg.webhook||'';
@@ -208,13 +216,13 @@
     $("chkWake").checked = !!cfg.wakePhrase;
     $("chkSendWebhook").checked = !!cfg.sendWebhook;
     setChip('autostart', cfg.autostart? 'ok':'idle');
-    setChip('webhook', (cfg.anthropicKey || cfg.sendWebhook)? 'ok':'idle');
+    setChip('webhook', (cfg.geminiKey || cfg.anthropicKey || cfg.sendWebhook)? 'ok':'idle');
     setChip('voice', (cfg.elevenKey && cfg.voiceId)? 'ok':'idle');
     setChip('wake','idle');
     isAwaitingCommand = !!cfg.wakePhrase;
   }
   function saveConfig(){
-    const cfg={ anthropicKey:$("anthropicKey").value, model:$("model").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, webhook:$("webhook").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
+    const cfg={ geminiKey:$("geminiKey").value, anthropicKey:$("anthropicKey").value, model:$("model").value, elevenKey:$("elevenKey").value, voiceId:$("voiceId").value, webhook:$("webhook").value, autostart:$("chkAutostart").checked, wakePhrase:$("chkWake").checked, sendWebhook:$("chkSendWebhook").checked };
     try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); log('Settings saved.'); }catch(e){ log('Save error: '+e.message) }
   }
   function loadConfig(){
@@ -271,18 +279,42 @@
     }
   }
 
-  // Route what Ray says to Vick's brain: Claude if a key is set, else the n8n webhook.
+  // Route what Ray says to Vick's brain: free Gemini first, then Claude, then the n8n webhook.
   async function respond(transcript){
     if(!transcript) return;
-    const key = ($("anthropicKey").value||'').trim();
-    if(key){ return askClaude(transcript, key); }
+    const gkey = ($("geminiKey").value||'').trim();
+    const akey = ($("anthropicKey").value||'').trim();
+    if(gkey){ return askGemini(transcript, gkey); }
+    if(akey){ return askClaude(transcript, akey); }
     if($("webhook").value && $("chkSendWebhook").checked){ return sendToWebhook(transcript); }
-    log('No brain connected — add a Claude API key in settings.');
-    speak("I don't have a brain connected yet. Add a Claude API key in settings and save, then I can answer you.");
+    log('No brain connected — add a free Gemini API key in settings.');
+    speak("I don't have a brain connected yet. Add a free Gemini API key in settings and save, then I can answer you.");
+  }
+
+  async function askGemini(transcript, key){
+    const model = ($("model").value||'').trim() || GEMINI_MODEL;
+    log('Vick is thinking…'); setChip('webhook','warn'); if(recognition) recognition.stop();
+    history.push({ role:'user', content: transcript });
+    if(history.length > 20) history = history.slice(-20);
+    try{
+      const contents = history.map(m=>({ role: m.role==='assistant'?'model':'user', parts:[{ text:m.content }] }));
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key), {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ system_instruction:{ parts:[{ text: VICK_SYSTEM }] }, contents, generationConfig:{ maxOutputTokens:350 } })
+      });
+      if(!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('Gemini HTTP '+res.status+(res.status===400?' (check API key / model name)':res.status===429?' (free-tier rate limit — wait a moment)':'')+' '+t.slice(0,140)); }
+      const data = await res.json();
+      const c = data.candidates && data.candidates[0];
+      const v = (c && c.content && c.content.parts && c.content.parts[0] && c.content.parts[0].text) ? c.content.parts[0].text.trim() : "I didn't catch a reply.";
+      history.push({ role:'assistant', content: v });
+      log('Vick: "'+v+'"'); splashEl.textContent = '"'+v.substring(0,40)+'…"'; setChip('webhook','ok'); speak(v);
+    }catch(e){ log('Brain error: '+e.message); setChip('webhook','bad'); speak('I had trouble thinking just now. Check the log on screen.'); }
+    finally{ if(!isListening) setTimeout(startRecognition, 900); }
   }
 
   async function askClaude(transcript, key){
-    const model = ($("model").value||'').trim() || EMBEDDED.model;
+    const model = ($("model").value||'').trim() || CLAUDE_MODEL;
     log('Vick is thinking…'); setChip('webhook','warn'); if(recognition) recognition.stop();
     history.push({ role:'user', content: transcript });
     if(history.length > 20) history = history.slice(-20);
@@ -348,9 +380,10 @@
   document.getElementById('btnLoad').addEventListener('click', ()=>{ loadConfig(); log('Settings re-loaded.') });
 
   document.getElementById('chkWake').addEventListener('change', (e)=>{ isAwaitingCommand = e.target.checked; if(isListening){ setChip('wake', isAwaitingCommand?'warn':'ok'); splashEl.textContent = isAwaitingCommand? 'Say "hey vick"' : 'Listening Continuously'; log('Mode switched.') } });
-  const updateBrainChip = ()=> setChip('webhook', ($("anthropicKey").value.trim() || ($("webhook").value.trim() && $("chkSendWebhook").checked))?'ok':'idle');
+  const updateBrainChip = ()=> setChip('webhook', ($("geminiKey").value.trim() || $("anthropicKey").value.trim() || ($("webhook").value.trim() && $("chkSendWebhook").checked))?'ok':'idle');
   document.getElementById('chkSendWebhook').addEventListener('change', updateBrainChip);
   document.getElementById('webhook').addEventListener('input', updateBrainChip);
+  document.getElementById('geminiKey').addEventListener('input', updateBrainChip);
   document.getElementById('anthropicKey').addEventListener('input', updateBrainChip);
   const updateVoiceChip = ()=> setChip('voice', ($("elevenKey").value.trim() && $("voiceId").value.trim())?'ok':'idle');
   document.getElementById('elevenKey').addEventListener('input', updateVoiceChip);
